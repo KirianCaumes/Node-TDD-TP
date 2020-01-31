@@ -11,13 +11,13 @@ const factory = require('factory-girl').factory
 require('./factories/post').factory
 
 beforeAll(async () => {
-    // await cleanDb(db)
+    await cleanDb(db)
 });
 
-afterAll(async () => {
-    // await cleanDb(db)
-    // await db.close()
-});
+// afterAll(async () => {
+//     await cleanDb(db)
+//     // await db.close()
+// });
 
 describe('GET /', () => {
     let response;
@@ -124,49 +124,154 @@ describe('GET /authors', () => {
 
 });
 
-describe('POST /post', () => {
 
-    let response
-    let data = {}
-    let post
-    let author
+
+describe('GET /posts', () => {
+
+    let response;
+    const isAuthorIncluded = false
+    let data = {};
 
     beforeAll(async () => await cleanDb(db))
 
-    describe('The author has one or multiple posts', () => {
+    describe('when there is no posts in database', () => {
         beforeAll(async () => {
-            author = await factory.create('author')
-            post = await factory.build('post')
-            // author.posts = [post]
-            data.title = post.title
-            data.content = post.content
-            data.author = author
-            // console.log(data)
-            response = await request(app).post('/post').send(data).set('Accept', 'application/json')
+            response = await request(app).get('/posts').set('Accept', 'application/json');
         })
+
+        test('It should not retrieve any authors in db', async () => {
+            const posts = await db.Post.find()
+            expect(posts.length).toBe(0);
+        });
+
         test('It should respond with a 200 status code', async () => {
             expect(response.statusCode).toBe(200);
         });
-        test('It should create and retrieve a post for the selected author', async () => {
-            const postsInDatabase = await db.Post.find()
-            expect(postsInDatabase.length).toBe(1)
-            expect(postsInDatabase[0].title).toBe(post.title)
-            expect(postsInDatabase[0].content).toBe(post.content)
-        });
 
-        test('It should return a json with the author\'s posts', async () => {
-            expect(response.body.title).toBe(data.title);
-            expect(response.body.content).toBe(data.content);
+        test('It should return a json with a void array', async () => {
+            expect(response.body.data).toStrictEqual([]);
+            expect(response.body.included).toStrictEqual([]);
         });
+    })
 
-        test('The post should belong to the selected authors\' posts', async () => {
-            // const posts = await author.getPosts()
-            const posts = await db.Post.find({ author: author._id })
-            console.log(posts)
-            expect(posts.length).toBe(1)
-            expect(posts[0].title).toBe(post.title)
-            expect(posts[0].content).toBe(post.content)
+    describe('when there is one or more posts in database', () => {
+        beforeAll(async () => {
+            await cleanDb(db)
+            author = await factory.create('author')
+            posts = await factory.createMany('post', 2, { author })
+            response = await request(app).get(`/posts${isAuthorIncluded ? '?include=author' : ''}`).set('Accept', 'application/json')
         })
 
+        test('It should not retrieve any author in db', async () => {
+            const postsInDb = await db.Post.find()
+            expect(postsInDb.length).toBe(2)
+        });
+        test('It should respond with a 200 status code', async () => {
+            expect(response.statusCode).toBe(200)
+        });
+
+        test('It should return a json with a void array', async () => {
+            if (isAuthorIncluded) expect(response.body.included.length).toBe(1)
+            expect(response.body.data.length).toBe(2)
+            const expectedBody = {
+                "data": [
+                    {
+                        "type": "posts",
+                        "_id": posts[0]._id.toString(),
+                        "attributes": {
+                            "title": posts[0].title,
+                            "content": posts[0].content
+                        },
+                        "relationships": {
+                            "author": {
+                                "data": {
+                                    "type": "author",
+                                    "_id": posts[0].author._id.toString()
+                                }
+                            }
+                        },
+                    },
+                    {
+                        "type": "posts",
+                        "_id": posts[1]._id.toString(),
+                        "attributes": {
+                            "title": posts[1].title,
+                            "content": posts[1].content
+                        },
+                        "relationships": {
+                            "author": {
+                                "data": {
+                                    "type": "author",
+                                    "_id": posts[1].author._id.toString()
+                                }
+                            }
+                        }
+                    }
+                ],
+                "included": isAuthorIncluded ?
+                    [
+                        {
+                            "_id": author._id.toString(),
+                            "attributes": {
+                                "firstName": author.firstName,
+                                "lastName": author.lastName,
+                            },
+                            "type": "author",
+                        },
+                    ]
+                    :
+                    []
+            }
+            expect(response.body).toEqual(expectedBody)
+        });
     })
+
 });
+
+
+// describe('POST /post', () => {
+
+//     let response
+//     let data = {}
+//     let post
+//     let author
+
+//     beforeAll(async () => await cleanDb(db))
+
+//     describe('The author has one or multiple posts', () => {
+//         beforeAll(async () => {
+//             author = await factory.create('author')
+//             post = await factory.build('post')
+//             // author.posts = [post]
+//             data.title = post.title
+//             data.content = post.content
+//             data.author = author
+//             // console.log(data)
+//             response = await request(app).post('/post').send(data).set('Accept', 'application/json')
+//         })
+//         test('It should respond with a 200 status code', async () => {
+//             expect(response.statusCode).toBe(200);
+//         });
+//         test('It should create and retrieve a post for the selected author', async () => {
+//             const postsInDatabase = await db.Post.find()
+//             expect(postsInDatabase.length).toBe(1)
+//             expect(postsInDatabase[0].title).toBe(post.title)
+//             expect(postsInDatabase[0].content).toBe(post.content)
+//         });
+
+//         test('It should return a json with the author\'s posts', async () => {
+//             expect(response.body.title).toBe(data.title);
+//             expect(response.body.content).toBe(data.content);
+//         });
+
+//         test('The post should belong to the selected authors\' posts', async () => {
+//             // const posts = await author.getPosts()
+//             const posts = await db.Post.find({ author: author._id })
+//             console.log(posts)
+//             expect(posts.length).toBe(1)
+//             expect(posts[0].title).toBe(post.title)
+//             expect(posts[0].content).toBe(post.content)
+//         })
+
+//     })
+// });

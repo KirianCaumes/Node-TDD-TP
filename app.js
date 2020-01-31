@@ -19,7 +19,7 @@ app.use(bodyParser.urlencoded({
 }))
 app.use(express.static('app/public'))
 
-mongoose.connect('mongodb+srv://@emptio-uzbyz.mongodb.net/Node-TDD-TP', { user: 'root', pass: 'qTg1i5Pmuy6ilDhz', auth: { authdb: "admin" }, useNewUrlParser: true, useCreateIndex: true, useUnifiedTopology: true, useFindAndModify: false }).then(
+mongoose.connect('mongodb+srv://@emptio-uzbyz.mongodb.net/Node-TDD-TP', { user: 'root', pass: 'V6Oz9dNHvZZ1ynEl', auth: { authdb: "admin" }, useNewUrlParser: true, useCreateIndex: true, useUnifiedTopology: true, useFindAndModify: false }).then(
     () => console.log("Connected to MongoDB"),
     err => console.error(err)
 );
